@@ -1,0 +1,1 @@
+worker: python nezhniy_collector_bot.py
