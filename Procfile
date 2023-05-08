@@ -1,1 +1,1 @@
-worker: python nezhniy_collector_bot.py
+worker: python poker_collector.py
