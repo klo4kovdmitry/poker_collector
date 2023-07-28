@@ -49,10 +49,17 @@ def calculation (textArr):
         if textRow.split(" ")[-1] == "0":
             continue
         sign = textRow.split(" ")[-1][0]
+        if sign == "+" or sign == "-":
+            number = (textRow.split(" ")[-1])[1:]
+        elif sign in ('123456789'):
+            sign = "+"
+            number = (textRow.split(" ")[-1])
+
+
         if sign == "+":
-            amount = int((textRow.split(" ")[-1])[1:])
+            amount = int(number)
         elif sign == "-":
-            amount = 0 - int((textRow.split(" ")[-1])[1:])
+            amount = 0 - int(number)
         else:
             continue
     # вычисляем имя
@@ -99,9 +106,13 @@ def textValidation(textArr):
         if textRow.split(" ")[-1] == "0":
             continue
         sign = textRow.split(" ")[-1][0]
-        number = (textRow.split(" ")[-1])[1:]
+        if sign == "+" or sign == "-":
+            number = (textRow.split(" ")[-1])[1:]
+        elif sign in ('123456789'):
+            sign = "+"
+            number = (textRow.split(" ")[-1])
         if bool(re.fullmatch(r'\d+$',(number))):
-            if sign == "+":
+            if sign == "+" or sign in ('123456789'):
                 controllSum += int(number)
             elif sign == "-":
                 controllSum -= int(number)
