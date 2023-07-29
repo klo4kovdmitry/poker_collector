@@ -12,6 +12,7 @@ import telebot
 import re
 import operator
 import requests
+import json
 import os, sys, inspect
 from dotenv import load_dotenv
 
@@ -28,14 +29,22 @@ def get_script_dir(follow_symlinks=True):
 
 def url_request_decorator(func, message):
     def wrapper(message):
-        # here should be an IF fork that separates cases between URL or table input
+        if message[:32].lower() == "https://www.pokernow.club/games/":
+            preparedMessage = "Расчет"
+            ledger = get_ledger(message)
+            ledger1 = json.loads(ledger)
+            ledgerResults = ledger1["playersInfos"].items()
+            print (len(ledgerResults))
+            # переписать когда будем добавлять мэппинг
+            for a in ledgerResults:
+                preparedMessage += "\n"
+                preparedMessage += str(a[1]["names"][0]) + " "
+                preparedMessage += str(a[1]["net"])
 
-        if message.text[:32].lower() == "https://www.pokernow.club/games/":
-            ledger = get_ledger(message.text)
             # преобразовать ledger в массив "имя" "ник" "результат". Ник пока оставляем не заполненным.
-            perparedMessage = message
+            # print (preparedMessage)
 
-            return func(perparedMessage)
+            return func(str(preparedMessage))
         return func(message)
     return wrapper (message)
 
@@ -50,7 +59,7 @@ def main_mod(message):
     # calcResults = "я получил твое сообщение \"" + message.text + "\" , но пока не знаю что с ним делать."
     # return (calcResults)
 
-    textArr  = message.text.split("\n")
+    textArr  = message.split("\n")
     textArr = textArr[1:]
     validationResult = textValidation(textArr)
     if validationResult[0] == True:
@@ -170,10 +179,10 @@ def start(m, res=False):
 @bot.message_handler(content_types=['text'])
 def message_handler(message):
     if message.text[:6].lower() == "расчет":
-        bot_response = main_mod(message)
+        bot_response = main_mod(message.text)
         bot.send_message(message.chat.id, bot_response)
     elif message.text[:32].lower() == "https://www.pokernow.club/games/":
-        bot.send_message(message.chat.id, url_request_decorator(main_mod, message))
+        bot.send_message(message.chat.id, url_request_decorator(main_mod, message.text))
 
 
 # запускаем бота
