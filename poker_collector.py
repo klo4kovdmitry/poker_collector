@@ -11,6 +11,7 @@
 import telebot
 import re
 import operator
+import requests
 import os, sys, inspect
 from dotenv import load_dotenv
 
@@ -24,6 +25,27 @@ def get_script_dir(follow_symlinks=True):
         path = os.path.realpath(path)
     return os.path.dirname(path)
 # основной метод расчета
+
+def url_request_decorator(func, message):
+    def wrapper(message):
+        # here should be an IF fork that separates cases between URL or table input
+
+        if message.text[:32].lower() == "https://www.pokernow.club/games/":
+            ledger = get_ledger(message.text)
+            # преобразовать ledger в массив "имя" "ник" "результат". Ник пока оставляем не заполненным.
+            perparedMessage = message
+
+            return func(perparedMessage)
+        return func(message)
+    return wrapper (message)
+
+def get_ledger(urlString):
+
+    response = requests.get(urlString+'/players_sessions')
+    # print (response.text)
+    return response.text.lstrip()
+    
+
 def main_mod(message):
     # calcResults = "я получил твое сообщение \"" + message.text + "\" , но пока не знаю что с ним делать."
     # return (calcResults)
@@ -148,7 +170,10 @@ def start(m, res=False):
 @bot.message_handler(content_types=['text'])
 def message_handler(message):
     if message.text[:6].lower() == "расчет":
-        bot.send_message(message.chat.id, main_mod(message))
+        bot_response = main_mod(message)
+        bot.send_message(message.chat.id, bot_response)
+    elif message.text[:32].lower() == "https://www.pokernow.club/games/":
+        bot.send_message(message.chat.id, url_request_decorator(main_mod, message))
 
 
 # запускаем бота
