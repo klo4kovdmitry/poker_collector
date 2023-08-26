@@ -29,8 +29,9 @@ def get_script_dir(follow_symlinks=True):
 
 def url_request_decorator(func, message):
     def wrapper(message):
-        if message[:32].lower() == "https://www.pokernow.club/games/":
+        if message[:37].lower() == "итог https://www.pokernow.club/games/":
             preparedMessage = "Расчет"
+            message = message [5:]
             ledger = get_ledger(message)
             ledger1 = json.loads(ledger)
             ledgerResults = ledger1["playersInfos"].items()
@@ -173,7 +174,7 @@ bot = telebot.TeleBot(str(token))
 
 @bot.message_handler(commands=['start'])
 def start(m, res=False):
-    bot.send_message(m.chat.id, 'здарова заебал. Отправь сюда результаты как покатали')
+    bot.send_message(m.chat.id, 'здарова заебал. Отправь сюда результаты как покатали.\nОтправь сообщение, которое начинается со слова "итог " и ссылки на игру в pokernow. \n \n ПРИМЕР: \nитог https://www.pokernow.club/games/pglFzhAquDgdi8luFX_WHAsXH')
 
 # получить сообщение от пользователя
 @bot.message_handler(content_types=['text'])
@@ -181,7 +182,7 @@ def message_handler(message):
     if message.text[:6].lower() == "расчет":
         bot_response = main_mod(message.text)
         bot.send_message(message.chat.id, bot_response)
-    elif message.text[:32].lower() == "https://www.pokernow.club/games/":
+    elif message.text[:37].lower() == "итог https://www.pokernow.club/games/":
         bot.send_message(message.chat.id, url_request_decorator(main_mod, message.text))
 
 
