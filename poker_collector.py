@@ -1,4 +1,4 @@
-# poker_collector
+# poker_collector v 2.3.0
 # бот для покерных расчетов. 
 # на вход принимает результаты из лог леджер с указаниями + - кто сколько выиграл/проиграл
 # на выход выдает кто кому должен сколько перевести.
@@ -69,6 +69,8 @@ def main_mod(message):
         return validationResult[1]
 
 def calculation (textArr):
+    ResultDict = {}
+
     positiveList = []
     negativeList = []
     finalText = ""
@@ -76,7 +78,6 @@ def calculation (textArr):
     for textRow in textArr:
     # вычисляем сумму
     # если ноль, то пропускаем полностью.
-        person = []
 
         if textRow.split(" ")[-1] == "0":
             continue
@@ -86,7 +87,6 @@ def calculation (textArr):
         elif sign in ('123456789'):
             sign = "+"
             number = (textRow.split(" ")[-1])
-
 
         if sign == "+":
             amount = int(number)
@@ -99,13 +99,21 @@ def calculation (textArr):
         for x in textRow.split(" ")[:-1]:
             name = name + x + " "
         name = name[:-1]
-    # собираем список
-        person.append(name)
-        person.append(amount)
+    # добавляем в словарь. Если имя уже встречалось, то прибавляем результат
+        if name in ResultDict:
+            ResultDict[name] += amount
+        else:
+            ResultDict[name] = amount
+
+    # собираем список из листа
+    for t in ResultDict.keys():
+        person = []
+        person.append(t)
+        person.append(ResultDict[t])
         if person[1] > 0:
             positiveList.append(person)
         else:
-            negativeList.append(person)    
+            negativeList.append(person)
 
     # сортируем списоки
     positiveList = sorted(positiveList, key=operator.itemgetter(1), reverse = True)
