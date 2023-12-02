@@ -1,4 +1,4 @@
-# poker_collector v 2.3.0
+# poker_collector v 2.4.0
 # бот для покерных расчетов. 
 # на вход принимает результаты из лог леджер с указаниями + - кто сколько выиграл/проиграл
 # на выход выдает кто кому должен сколько перевести.
@@ -64,10 +64,11 @@ def main_mod(message):
     textArr = textArr[1:]
     validationResult = textValidation(textArr)
     if validationResult[0] == True:
-        return calculation(textArr)
+        metarow = "#расплата: \n"
+        return metarow + calculation(textArr)
     else:
         return validationResult[1]
-
+    
 def calculation (textArr):
     ResultDict = {}
 
