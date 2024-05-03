@@ -1,4 +1,4 @@
-# poker_collector v 2.4.0
+# poker_collector v 3.0.0
 # бот для покерных расчетов. 
 # на вход принимает результаты из лог леджер с указаниями + - кто сколько выиграл/проиграл
 # на выход выдает кто кому должен сколько перевести.
@@ -6,8 +6,8 @@
 # 1) на месте имен имена, на месте цифр цифры.
 # 2) перед цифрами знак + или -. Если знака нет, то цифра должна быть 0
 # 3) сумма равна нулю.
-# еще одну версию
-
+# 3.0. проверяем имя чата
+ 
 import telebot
 import re
 import operator
@@ -60,6 +60,8 @@ def main_mod(message):
     # calcResults = "я получил твое сообщение \"" + message.text + "\" , но пока не знаю что с ним делать."
     # return (calcResults)
 
+    if message == '2':
+        p=1
     textArr  = message.split("\n")
     textArr = textArr[1:]
     validationResult = textValidation(textArr)
@@ -177,6 +179,8 @@ os.chdir(get_script_dir())
 dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
 load_dotenv(dotenv_path)
 token = os.environ.get('TOKEN')
+VIP_chat_id = os.environ.get('VIP_CHAT_CODE')
+VIP_chat_welcome_text = os.environ.get('VIP_CHAT_WELCOME_TEXT')
 
 bot = telebot.TeleBot(str(token))
 # кнопка /start
@@ -189,7 +193,11 @@ def start(m, res=False):
 @bot.message_handler(content_types=['text'])
 def message_handler(message):
     if message.text[:6].lower() == "расчет":
-        bot_response = main_mod(message.text)
+        
+        if str(message.chat.id) == VIP_chat_id:
+            bot_response = VIP_chat_welcome_text + "\n" + main_mod(message.text)
+        else:
+            bot_response = main_mod(message.text)
         bot.send_message(message.chat.id, bot_response)
     elif message.text[:37].lower() == "итог https://www.pokernow.club/games/":
         bot.send_message(message.chat.id, url_request_decorator(main_mod, message.text))
