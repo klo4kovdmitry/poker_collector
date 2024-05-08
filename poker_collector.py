@@ -45,12 +45,23 @@ def url_request_decorator(func, message, mode):
                 collection = db ['players']
                 downloadedCollection = collection.find()
                 print (downloadedCollection)
+                userDict = {}
+                for x in downloadedCollection:
+                    print(x)
+                    userDict[x["pn_userid"]] = x["tg_uname"]
             for a in ledgerResults:
                 preparedMessage += "\n"
                 if mode == 1:
-
-                    preparedMessage += str(a[0]) + "<-=^-^=->"
-                preparedMessage += str(a[1]["names"][0]) + " "
+                    playerId = str(a[0])
+                    print (playerId)
+                    try:
+                        playerId = userDict [str(a[0])]
+                        print("success! Player "+ str(a[0]) + " was recognized as " + playerId)
+                    except Exception as e:
+                        print("player " + playerId + " not found!")
+                    
+                    preparedMessage += playerId + "(aka "
+                preparedMessage += str(a[1]["names"][0]) + ") "
                 preparedMessage += str(a[1]["net"])
 
             # преобразовать ledger в массив "имя" "ник" "результат". Ник пока оставляем не заполненным.
