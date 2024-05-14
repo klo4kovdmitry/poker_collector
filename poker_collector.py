@@ -1,4 +1,4 @@
-# poker_collector v 3.0.0
+# poker_collector v 3.1.0
 # бот для покерных расчетов. 
 # на вход принимает результаты из лог леджер с указаниями + - кто сколько выиграл/проиграл
 # на выход выдает кто кому должен сколько перевести.
@@ -6,7 +6,7 @@
 # 1) на месте имен имена, на месте цифр цифры.
 # 2) перед цифрами знак + или -. Если знака нет, то цифра должна быть 0
 # 3) сумма равна нулю.
-# 3.0. проверяем имя чата
+# 3.1. при работе с вип чатом подключаемся к БД
  
 import telebot
 import re
@@ -14,7 +14,9 @@ import operator
 import requests
 import json
 import os, sys, inspect
+from pymongo import MongoClient
 from dotenv import load_dotenv
+
 
 
 def get_script_dir(follow_symlinks=True):
@@ -27,7 +29,7 @@ def get_script_dir(follow_symlinks=True):
     return os.path.dirname(path)
 # основной метод расчета
 
-def url_request_decorator(func, message):
+def url_request_decorator(func, message, mode):
     def wrapper(message):
         if message[:37].lower() == "итог https://www.pokernow.club/games/":
             preparedMessage = "Расчет"
@@ -37,16 +39,36 @@ def url_request_decorator(func, message):
             ledgerResults = ledger1["playersInfos"].items()
             print (len(ledgerResults))
             # переписать когда будем добавлять мэппинг
+            if mode == 1:
+                client = MongoClient('mongodb+srv://' + mongo_user + ":" + mongo_pass + mongo_client_tail)
+                db = client['Collector_DB_TEST']
+                collection = db ['players']
+                downloadedCollection = collection.find()
+                print (downloadedCollection)
+                userDict = {}
+                for x in downloadedCollection:
+                    print(x)
+                    userDict[x["pn_userid"]] = x["tg_uname"]
             for a in ledgerResults:
                 preparedMessage += "\n"
-                preparedMessage += str(a[1]["names"][0]) + " "
+                if mode == 1:
+                    playerId = str(a[0])
+                    print (playerId)
+                    try:
+                        playerId = userDict [str(a[0])]
+                        print("success! Player "+ str(a[0]) + " was recognized as " + playerId)
+                    except Exception as e:
+                        print("player " + playerId + " not found!")
+                    
+                    preparedMessage += playerId + "(aka "
+                preparedMessage += str(a[1]["names"][0]) + ") "
                 preparedMessage += str(a[1]["net"])
 
             # преобразовать ledger в массив "имя" "ник" "результат". Ник пока оставляем не заполненным.
             # print (preparedMessage)
 
-            return func(str(preparedMessage))
-        return func(message)
+            return func(str(preparedMessage), mode)
+        return func(message, mode)
     return wrapper (message)
 
 def get_ledger(urlString):
@@ -56,12 +78,10 @@ def get_ledger(urlString):
     return response.text.lstrip()
     
 
-def main_mod(message):
+def main_mod(message, operating_mode):
     # calcResults = "я получил твое сообщение \"" + message.text + "\" , но пока не знаю что с ним делать."
     # return (calcResults)
 
-    if message == '2':
-        p=1
     textArr  = message.split("\n")
     textArr = textArr[1:]
     validationResult = textValidation(textArr)
@@ -181,6 +201,9 @@ load_dotenv(dotenv_path)
 token = os.environ.get('TOKEN')
 VIP_chat_id = os.environ.get('VIP_CHAT_CODE')
 VIP_chat_welcome_text = os.environ.get('VIP_CHAT_WELCOME_TEXT')
+mongo_client_tail = os.environ.get('MONGO_CLIENT_TAIL')
+mongo_user = os.environ.get('MONGO_USER')
+mongo_pass = os.environ.get('MONGO_PASS')
 
 bot = telebot.TeleBot(str(token))
 # кнопка /start
@@ -192,15 +215,18 @@ def start(m, res=False):
 # получить сообщение от пользователя
 @bot.message_handler(content_types=['text'])
 def message_handler(message):
-    if message.text[:6].lower() == "расчет":
-        
-        if str(message.chat.id) == VIP_chat_id:
-            bot_response = VIP_chat_welcome_text + "\n" + main_mod(message.text)
-        else:
-            bot_response = main_mod(message.text)
+    func_mode = 0 # общий режим работы
+    if message.text[:6].lower() == "расчет":        
+        bot_response = main_mod(message.text, 0)
         bot.send_message(message.chat.id, bot_response)
     elif message.text[:37].lower() == "итог https://www.pokernow.club/games/":
-        bot.send_message(message.chat.id, url_request_decorator(main_mod, message.text))
+        if str(message.chat.id) == VIP_chat_id:
+            func_mode = 1 # режим работы для VIP чата
+            main_results = url_request_decorator(main_mod, message.text, func_mode)
+            bot_response = VIP_chat_welcome_text + "\n" + main_results            
+        else:
+            bot_response = url_request_decorator(main_mod, message.text, func_mode)
+        bot.send_message(message.chat.id, bot_response)
 
 
 # запускаем бота
