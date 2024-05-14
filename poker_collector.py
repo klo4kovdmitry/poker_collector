@@ -61,7 +61,9 @@ def url_request_decorator(func, message, mode):
                         print("player " + playerId + " not found!")
                     
                     preparedMessage += playerId + "(aka "
-                preparedMessage += str(a[1]["names"][0]) + ") "
+                    preparedMessage += str(a[1]["names"][0]) + ") "
+                else:
+                    preparedMessage += str(a[1]["names"][0]) + " "
                 preparedMessage += str(a[1]["net"])
 
             # преобразовать ledger в массив "имя" "ник" "результат". Ник пока оставляем не заполненным.
