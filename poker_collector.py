@@ -1,4 +1,4 @@
-# poker_collector v 3.1.0
+# poker_collector v 3.1.2
 # бот для покерных расчетов. 
 # на вход принимает результаты из лог леджер с указаниями + - кто сколько выиграл/проиграл
 # на выход выдает кто кому должен сколько перевести.
@@ -60,7 +60,7 @@ def url_request_decorator(func, message, mode):
                     except Exception as e:
                         print("player " + playerId + " not found!")
                     
-                    preparedMessage += playerId + "(aka "
+                    preparedMessage += playerId + " (aka "
                     preparedMessage += str(a[1]["names"][0]) + ") "
                 else:
                     preparedMessage += str(a[1]["names"][0]) + " "
@@ -159,7 +159,7 @@ def calculation (textArr):
                 transactionString = (negativeList[0])[0] + " -> " + r[0] + " " + str(r[1])
                 (negativeList[0])[1] += r[1]
                 r[1] = 0
-            finalText = finalText + transactionString + "\n"
+            finalText = finalText + transactionString + "\n\n"
     return finalText
 
 def textValidation(textArr):
