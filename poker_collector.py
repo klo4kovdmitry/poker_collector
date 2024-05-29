@@ -1,4 +1,4 @@
-# poker_collector v 3.1.2
+# poker_collector v 3.1.3
 # бот для покерных расчетов. 
 # на вход принимает результаты из лог леджер с указаниями + - кто сколько выиграл/проиграл
 # на выход выдает кто кому должен сколько перевести.
@@ -6,7 +6,10 @@
 # 1) на месте имен имена, на месте цифр цифры.
 # 2) перед цифрами знак + или -. Если знака нет, то цифра должна быть 0
 # 3) сумма равна нулю.
-# 3.1. при работе с вип чатом подключаемся к БД
+# 3.1.3:
+# 1) вывести реквизиты распознанных игроков
+# 2) написать призыв ставить реакцию после оплаты
+# 3) обеспечить поддержку суммарного подсчета нескольких игр
  
 import telebot
 import re
@@ -33,39 +36,52 @@ def url_request_decorator(func, message, mode):
     def wrapper(message):
         if message[:37].lower() == "итог https://www.pokernow.club/games/":
             preparedMessage = "Расчет"
-            message = message [5:]
-            ledger = get_ledger(message)
-            ledger1 = json.loads(ledger)
-            ledgerResults = ledger1["playersInfos"].items()
-            print (len(ledgerResults))
-            # переписать когда будем добавлять мэппинг
-            if mode == 1:
-                client = MongoClient('mongodb+srv://' + mongo_user + ":" + mongo_pass + mongo_client_tail)
-                db = client['Collector_DB_TEST']
-                collection = db ['players']
-                downloadedCollection = collection.find()
-                print (downloadedCollection)
-                userDict = {}
-                for x in downloadedCollection:
-                    print(x)
-                    userDict[x["pn_userid"]] = x["tg_uname"]
-            for a in ledgerResults:
-                preparedMessage += "\n"
-                if mode == 1:
-                    playerId = str(a[0])
-                    print (playerId)
-                    try:
-                        playerId = userDict [str(a[0])]
-                        print("success! Player "+ str(a[0]) + " was recognized as " + playerId)
-                    except Exception as e:
-                        print("player " + playerId + " not found!")
-                    
-                    preparedMessage += playerId + " (aka "
-                    preparedMessage += str(a[1]["names"][0]) + ") "
-                else:
-                    preparedMessage += str(a[1]["names"][0]) + " "
-                preparedMessage += str(a[1]["net"])
+            i=0
+            while message.find("https://www.pokernow.club/games/")>=0:
+                i+=1 # считаем циклы чтобы не бегать в базу больше 1 раза
+                link_start = message.find("https://www.pokernow.club/games/")
+                message = message [link_start:]
+                link_end = message.find(" ")
+                if link_end == -1:
+                    link_end = len(message)
+                ledger = get_ledger(message[:link_end])
+                ledger1 = json.loads(ledger)
+                ledgerResults = ledger1["playersInfos"].items()
+                print (len(ledgerResults))
+                # переписать когда будем добавлять мэппинг
+                if mode == 1 and i==1:
+                    client = MongoClient('mongodb+srv://' + mongo_user + ":" + mongo_pass + mongo_client_tail)
+                    db = client['Collector_DB_TEST']
+                    collection = db ['players']
+                    downloadedCollection = collection.find()
+                    print (downloadedCollection)
+                    userDict = {}
+                    for x in downloadedCollection:
+                        print(x)
+                        userDict[x["pn_userid"]] = x["tg_uname"] + " // " + x["tel"] + " $$ "+ x["banks"]
+                for a in ledgerResults:
+                    preparedMessage += "\n"
+                    if mode == 1:
+                        playerId = str(a[0])
+                        print (playerId)
+                        try:
+                            playerId = userDict [str(a[0])]
+                            preparedMessage += playerId[:playerId.find("// ")] + " (aka "
+                            preparedMessage += str(a[1]["names"][0]) + ") "
+                            preparedMessage += playerId[playerId.find(" // "):] + " "
+                            preparedMessage += str(a[1]["net"])
 
+                            print("success! Player "+ str(a[0]) + " was recognized as " + playerId)
+                        except Exception as e:
+                            print("player " + playerId + " not found!")
+                            preparedMessage += playerId + " (aka "
+                            preparedMessage += str(a[1]["names"][0]) + ") "
+                            preparedMessage += str(a[1]["net"])
+
+                    else:
+                        preparedMessage += str(a[1]["names"][0]) + " "
+                        preparedMessage += str(a[1]["net"])
+                message = message[link_end-1:]
             # преобразовать ledger в массив "имя" "ник" "результат". Ник пока оставляем не заполненным.
             # print (preparedMessage)
 
@@ -147,16 +163,31 @@ def calculation (textArr):
     # проходим по плюсовикам
     for r in positiveList:
         while r[1] > 0:
-            if r[1] + negativeList[0][1] > 0:
-                transactionString = (negativeList[0])[0] + " -> " + r[0] + " " + str(0 -negativeList[0][1])
+            negativeNameEnd = negativeList[0][0].find(" // ")
+            if negativeNameEnd >=0:
+                negativeName = negativeList[0][0][:negativeNameEnd]
+            else:
+                negativeName = negativeList[0][0]
+
+            positiveNameEnd = r[0].find(" // ")
+            if positiveNameEnd >= 0:
+                positiveName = r[0][:positiveNameEnd]
+                positiveTel = " тел.: " + r[0][positiveNameEnd+4:r[0].find(" $$ ")]
+                positiveBank = " в " + r[0][r[0].find(" $$ ")+4 :]
+            else:
+                positiveName = r[0]
+                positiveTel = ""
+                positiveBank = ""
+            if r[1] + negativeList[0][1] > 0:                
+                transactionString = negativeName + " -> " + positiveName + "\n" + str(0 -negativeList[0][1]) + " ₽" + positiveTel + positiveBank
                 r[1] += (negativeList[0])[1]
                 negativeList.pop(0)
             elif r[1] + (negativeList[0])[1] == 0:
-                transactionString = (negativeList[0])[0] + " -> " + r[0] + " " + str(0 - (negativeList[0])[1])
+                transactionString = negativeName + " -> " + positiveName + "\n" + str(0 - (negativeList[0])[1]) + " ₽" + positiveTel + positiveBank
                 r[1] = 0
                 negativeList.pop(0)
             else:
-                transactionString = (negativeList[0])[0] + " -> " + r[0] + " " + str(r[1])
+                transactionString = negativeName + " -> " + positiveName + "\n" + str(r[1]) + " ₽" + positiveTel + positiveBank
                 (negativeList[0])[1] += r[1]
                 r[1] = 0
             finalText = finalText + transactionString + "\n\n"
@@ -229,7 +260,6 @@ def message_handler(message):
         else:
             bot_response = url_request_decorator(main_mod, message.text, func_mode)
         bot.send_message(message.chat.id, bot_response)
-
 
 # запускаем бота
 bot.infinity_polling()
