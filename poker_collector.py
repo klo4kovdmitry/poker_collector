@@ -1,4 +1,4 @@
-# poker_collector v 3.1.3
+# poker_collector v 3.1.4
 # бот для покерных расчетов. 
 # на вход принимает результаты из лог леджер с указаниями + - кто сколько выиграл/проиграл
 # на выход выдает кто кому должен сколько перевести.
@@ -6,10 +6,8 @@
 # 1) на месте имен имена, на месте цифр цифры.
 # 2) перед цифрами знак + или -. Если знака нет, то цифра должна быть 0
 # 3) сумма равна нулю.
-# 3.1.3:
-# 1) вывести реквизиты распознанных игроков
-# 2) написать призыв ставить реакцию после оплаты
-# 3) обеспечить поддержку суммарного подсчета нескольких игр
+# 3.1.4:
+# 1) обращение к незарегистрированным игрокам
  
 import telebot
 import re
@@ -21,6 +19,8 @@ from pymongo import MongoClient
 from dotenv import load_dotenv
 
 
+global unknownSquad
+unknownSquad = ""
 
 def get_script_dir(follow_symlinks=True):
     if getattr(sys, 'frozen', False): # py2exe, PyInstaller, cx_Freeze
@@ -37,6 +37,7 @@ def url_request_decorator(func, message, mode):
         if message[:37].lower() == "итог https://www.pokernow.club/games/":
             preparedMessage = "Расчет"
             i=0
+            global unknownSquad
             while message.find("https://www.pokernow.club/games/")>=0:
                 i+=1 # считаем циклы чтобы не бегать в базу больше 1 раза
                 link_start = message.find("https://www.pokernow.club/games/")
@@ -77,7 +78,7 @@ def url_request_decorator(func, message, mode):
                             preparedMessage += playerId + " (aka "
                             preparedMessage += str(a[1]["names"][0]) + ") "
                             preparedMessage += str(a[1]["net"])
-
+                            unknownSquad += str(a[1]["names"][0]) + ", "
                     else:
                         preparedMessage += str(a[1]["names"][0]) + " "
                         preparedMessage += str(a[1]["net"])
@@ -234,6 +235,7 @@ load_dotenv(dotenv_path)
 token = os.environ.get('TOKEN')
 VIP_chat_id = os.environ.get('VIP_CHAT_CODE')
 VIP_chat_welcome_text = os.environ.get('VIP_CHAT_WELCOME_TEXT')
+VIP_chat_gdoc_reg = os.environ.get('VIP_CHAT_GDOC_REGISTRATION')
 mongo_client_tail = os.environ.get('MONGO_CLIENT_TAIL')
 mongo_user = os.environ.get('MONGO_USER')
 mongo_pass = os.environ.get('MONGO_PASS')
@@ -256,7 +258,10 @@ def message_handler(message):
         if str(message.chat.id) == VIP_chat_id:
             func_mode = 1 # режим работы для VIP чата
             main_results = url_request_decorator(main_mod, message.text, func_mode)
-            bot_response = VIP_chat_welcome_text + "\n" + main_results            
+            end_message = ""
+            if unknownSquad != "":
+                end_message = "\n" + "👹 " + unknownSquad + "\n КТО ВЫ? Я ВАС НЕ ЗНАЮ! ИДИТЕ НА pokernow.club, зарегистрируйтесь там и заполните анкету " + VIP_chat_gdoc_reg + "\n Играйте, пожалуйста, зарегистрированными! Спасибо."
+            bot_response = VIP_chat_welcome_text + "\n" + main_results + end_message            
         else:
             bot_response = url_request_decorator(main_mod, message.text, func_mode)
         bot.send_message(message.chat.id, bot_response)
