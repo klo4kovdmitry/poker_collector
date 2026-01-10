@@ -34,13 +34,13 @@ def get_script_dir(follow_symlinks=True):
 
 def url_request_decorator(func, message, mode):
     def wrapper(message):
-        if message[:37].lower() == "итог https://www.pokernow.club/games/":
+        if message[:36].lower() == "итог https://www.pokernow.com/games/":
             preparedMessage = "Расчет"
             i=0
             global unknownSquad
-            while message.find("https://www.pokernow.club/games/")>=0:
+            while message.find("https://www.pokernow.com/games/")>=0:
                 i+=1 # считаем циклы чтобы не бегать в базу больше 1 раза
-                link_start = message.find("https://www.pokernow.club/games/")
+                link_start = message.find("https://www.pokernow.com/games/")
                 message = message [link_start:]
                 link_end = message.find(" ")
                 if link_end == -1:
@@ -91,7 +91,6 @@ def url_request_decorator(func, message, mode):
     return wrapper (message)
 
 def get_ledger(urlString):
-
     response = requests.get(urlString+'/players_sessions')
     # print (response.text)
     return response.text.lstrip()
@@ -105,7 +104,7 @@ def main_mod(message, operating_mode):
     textArr = textArr[1:]
     validationResult = textValidation(textArr)
     if validationResult[0] == True:
-        metarow = "#расплата: \n"
+        metarow = "#расплата: \n !!!СУММЫ ОКРУГЛЕНЫ ДО ДВУХ НУЛЕЙ!!! \n \n"
         return metarow + calculation(textArr)
     else:
         return validationResult[1]
@@ -180,15 +179,15 @@ def calculation (textArr):
                 positiveTel = ""
                 positiveBank = ""
             if r[1] + negativeList[0][1] > 0:                
-                transactionString = negativeName + " -> " + positiveName + "\n" + str(0 -negativeList[0][1]) + " ₽" + positiveTel + positiveBank
+                transactionString = negativeName + " -> " + positiveName + "\n" + str(round(0 -negativeList[0][1],-2)) + " ₽" + positiveTel + positiveBank
                 r[1] += (negativeList[0])[1]
                 negativeList.pop(0)
             elif r[1] + (negativeList[0])[1] == 0:
-                transactionString = negativeName + " -> " + positiveName + "\n" + str(0 - (negativeList[0])[1]) + " ₽" + positiveTel + positiveBank
+                transactionString = negativeName + " -> " + positiveName + "\n" + str( round(0 - (negativeList[0])[1],-2)) + " ₽" + positiveTel + positiveBank
                 r[1] = 0
                 negativeList.pop(0)
             else:
-                transactionString = negativeName + " -> " + positiveName + "\n" + str(r[1]) + " ₽" + positiveTel + positiveBank
+                transactionString = negativeName + " -> " + positiveName + "\n" + str(round(r[1],-2)) + " ₽" + positiveTel + positiveBank
                 (negativeList[0])[1] += r[1]
                 r[1] = 0
             finalText = finalText + transactionString + "\n\n"
@@ -254,13 +253,13 @@ def message_handler(message):
     if message.text[:6].lower() == "расчет":        
         bot_response = main_mod(message.text, 0)
         bot.send_message(message.chat.id, bot_response)
-    elif message.text[:37].lower() == "итог https://www.pokernow.club/games/":
+    elif message.text[:36].lower() == "итог https://www.pokernow.com/games/":
         if str(message.chat.id) == VIP_chat_id:
             func_mode = 1 # режим работы для VIP чата
             main_results = url_request_decorator(main_mod, message.text, func_mode)
             end_message = ""
             if unknownSquad != "":
-                end_message = "\n" + "👹 " + unknownSquad + "\n КТО ВЫ? Я ВАС НЕ ЗНАЮ! ИДИТЕ НА pokernow.club, зарегистрируйтесь там и заполните анкету " + VIP_chat_gdoc_reg + "\n Играйте, пожалуйста, зарегистрированными! Спасибо."
+                end_message = "\n" + "👹 " + unknownSquad + "\n КТО ВЫ? Я ВАС НЕ ЗНАЮ! ИДИТЕ НА pokernow.com, зарегистрируйтесь там и заполните анкету " + VIP_chat_gdoc_reg + "\n Играйте, пожалуйста, зарегистрированными! Спасибо."
             bot_response = VIP_chat_welcome_text + "\n" + main_results + end_message            
         else:
             bot_response = url_request_decorator(main_mod, message.text, func_mode)
