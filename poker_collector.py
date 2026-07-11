@@ -22,6 +22,17 @@ from dotenv import load_dotenv
 global unknownSquad
 unknownSquad = ""
 
+POKERNOW_GAME_URL_RE = re.compile(
+    r"https://www\.pokernow\.(?:com|club)/games/[^\s]+",
+    re.IGNORECASE,
+)
+
+
+def get_game_urls(message):
+    if not message.lower().startswith("итог"):
+        return []
+    return POKERNOW_GAME_URL_RE.findall(message)
+
 def get_script_dir(follow_symlinks=True):
     if getattr(sys, 'frozen', False): # py2exe, PyInstaller, cx_Freeze
         path = os.path.abspath(sys.executable)
@@ -34,18 +45,15 @@ def get_script_dir(follow_symlinks=True):
 
 def url_request_decorator(func, message, mode):
     def wrapper(message):
-        if message[:36].lower() == "итог https://www.pokernow.com/games/":
+        game_urls = get_game_urls(message)
+        if game_urls:
             preparedMessage = "Расчет"
             i=0
             global unknownSquad
-            while message.find("https://www.pokernow.com/games/")>=0:
+            unknownSquad = ""
+            for game_url in game_urls:
                 i+=1 # считаем циклы чтобы не бегать в базу больше 1 раза
-                link_start = message.find("https://www.pokernow.com/games/")
-                message = message [link_start:]
-                link_end = message.find(" ")
-                if link_end == -1:
-                    link_end = len(message)
-                ledger = get_ledger(message[:link_end])
+                ledger = get_ledger(game_url)
                 ledger1 = json.loads(ledger)
                 ledgerResults = ledger1["playersInfos"].items()
                 print (len(ledgerResults))
@@ -82,7 +90,6 @@ def url_request_decorator(func, message, mode):
                     else:
                         preparedMessage += str(a[1]["names"][0]) + " "
                         preparedMessage += str(a[1]["net"])
-                message = message[link_end-1:]
             # преобразовать ledger в массив "имя" "ник" "результат". Ник пока оставляем не заполненным.
             # print (preparedMessage)
 
@@ -253,7 +260,7 @@ def message_handler(message):
     if message.text[:6].lower() == "расчет":        
         bot_response = main_mod(message.text, 0)
         bot.send_message(message.chat.id, bot_response)
-    elif message.text[:36].lower() == "итог https://www.pokernow.com/games/":
+    elif get_game_urls(message.text):
         if str(message.chat.id) == VIP_chat_id:
             func_mode = 1 # режим работы для VIP чата
             main_results = url_request_decorator(main_mod, message.text, func_mode)
